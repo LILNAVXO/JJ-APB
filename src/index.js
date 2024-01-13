@@ -15,6 +15,8 @@ client.once(Events.ClientReady, (ready) => {
   const socials = new SlashCommandBuilder()
     .setName("socials")
     .setDescription(`Link to all of Valentine's Socials`);
+
+
   const ban = new SlashCommandBuilder()
     .setName("ban")
     .setDescription("Bans the offender")
@@ -30,6 +32,8 @@ client.once(Events.ClientReady, (ready) => {
         .setDescription("Why is the user being banned")
         .setRequired(true),
     );
+
+
   const kick = new SlashCommandBuilder()
   .setName("kick")
   .setDescription("Kicks the offender from the Server")
@@ -45,6 +49,8 @@ client.once(Events.ClientReady, (ready) => {
       .setDescription("Why is the user being Kicked")
       .setRequired(true),
   );
+
+
   const warn = new SlashCommandBuilder()
   .setName("warn")
   .setDescription("Warns the User")
@@ -60,6 +66,8 @@ client.once(Events.ClientReady, (ready) => {
       .setDescription("Why is the user being warned")
       .setRequired(true),
   );
+
+
   const banCommand = ban.toJSON();
   const utubeCommand = socials.toJSON();
   const kickCommand = kick.toJSON();
@@ -68,6 +76,7 @@ client.once(Events.ClientReady, (ready) => {
   client.application.commands.create(banCommand, process.env.GUILD_ID);
   client.application.commands.create(kickCommand, process.env.GUILD_ID);
   client.application.commands.create(warnCommand, process.env.GUILD_ID);
+
 });
 client.on(Events.InteractionCreate, (interacion) => {
   const userOption = interacion.options.getMember("offender");
@@ -76,7 +85,6 @@ client.on(Events.InteractionCreate, (interacion) => {
   const checkRole = interacion.member.roles.cache;
   const checkBanRoles = config.banRoleIDs.some((banRoleID) => checkRole.has(banRoleID));
   const checkKickRoles = config.kickRoleIDs.some((kickRoleID) => checkRole.has(kickRoleID));
-
 
   if (!interacion.isChatInputCommand) return;
   
@@ -146,6 +154,15 @@ client.on(Events.InteractionCreate, (interacion) => {
   }
 
 
+});
+
+client.on('messageCreate', (message) =>{
+  if(message.author.bot) return;
+  const msgLower = message.content.toLowerCase();
+  if(config.blacklist.some(word => msgLower.includes(word))){
+    message.delete();
+    message.author.send(`**${message.guild.name}:** Please refrain from using Slurs or other Racist remarks`);
+  }
 });
 
 client.on("guildMemberAdd", (member) => {
