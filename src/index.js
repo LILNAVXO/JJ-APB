@@ -26,7 +26,7 @@ client.once(Events.ClientReady, (ready) => {
         .setDescription("User that gets banned")
         .setRequired(true),
     )
-    .addStringOption((option) =>
+    .addUserOption((option) =>
       option
         .setName("reason")
         .setDescription("Why is the user being banned")
@@ -67,24 +67,56 @@ client.once(Events.ClientReady, (ready) => {
       .setRequired(true),
   );
 
+  const mute = new SlashCommandBuilder()
+    .setName("mute")
+    .setDescription("Mutes the offender")
+    .addUserOption((option) =>
+      option
+        .setName("offender")
+        .setDescription("User to be Muted")
+        .setRequired(true))
+    .addStringOption((option) =>
+      option
+        .setName("reason")
+        .setDescription("why is the user being muted")
+        .setRequired(true)
+    );
+
+
+  const unMute = new SlashCommandBuilder()
+    .setName("unmute")
+    .setDescription("unMutes the offender")
+    .addUserOption((option) =>
+      option
+        .setName("offender")
+        .setDescription("User to be unMuted")
+        .setRequired(true));
+
 
   const banCommand = ban.toJSON();
   const utubeCommand = socials.toJSON();
   const kickCommand = kick.toJSON();
   const warnCommand = warn.toJSON();
+  const muteCommand = mute.toJSON();
+  const unmuteCommand = unMute.toJSON();
   client.application.commands.create(utubeCommand, process.env.GUILD_ID);
   client.application.commands.create(banCommand, process.env.GUILD_ID);
   client.application.commands.create(kickCommand, process.env.GUILD_ID);
   client.application.commands.create(warnCommand, process.env.GUILD_ID);
+  client.application.commands.create(muteCommand, process.env.GUILD_ID);
+  client.application.commands.create(unmuteCommand, process.env.GUILD_ID);
 
 });
-client.on(Events.InteractionCreate, (interacion) => {
+client.on(Events.InteractionCreate, async (interacion) => {
   const userOption = interacion.options.getMember("offender");
   const reason = interacion.options.getString("reason");
   const offenseLog = client.channels.cache.get(process.env.OFFENSE_LOG);
   const checkRole = interacion.member.roles.cache;
+  const checkTargetRole = userOption.roles.cache;
   const checkBanRoles = config.banRoleIDs.some((banRoleID) => checkRole.has(banRoleID));
   const checkKickRoles = config.kickRoleIDs.some((kickRoleID) => checkRole.has(kickRoleID));
+  const guild = interacion.guild;
+  const muteRole = guild.roles.cache.get(process.env.MUTE_ROLE_ID);
 
   if (!interacion.isChatInputCommand) return;
   
@@ -110,9 +142,6 @@ client.on(Events.InteractionCreate, (interacion) => {
       offenseLog.send(
         `Offender: ${userOption} \nOffense: ${reason} \nAction: Ban`,
       );
-      userOption.send(
-        `You have been Banned from **${interacion.guild.name}** for **${reason}**`,
-      );
     }
   }
 
@@ -131,9 +160,6 @@ client.on(Events.InteractionCreate, (interacion) => {
       offenseLog.send(
         `Offender: ${userOption} \nOffense: ${reason} \nAction: Kick`,
       );
-      userOption.send(
-        `You have been Kicked from **${interacion.guild.name}** for **${reason}**`,
-      );
     }
   }
 
@@ -145,7 +171,7 @@ client.on(Events.InteractionCreate, (interacion) => {
         ephemeral: true,
       });
     } else {
-      userOption.send(
+       await userOption.send(
         `**${interacion.guild.name}:** You have been Warned\n**Reason:** ${reason}`,
       );
       interacion.reply(`You have warned ${userOption} for ${reason}`);
@@ -153,7 +179,47 @@ client.on(Events.InteractionCreate, (interacion) => {
     }
   }
 
+//Mute Command....
+  if(interacion.commandName === "mute") {
+    if(!checkKickRoles){
+      return interacion.reply({
+        content: "You do not have permission to use this command",
+        ephemeral: true
+      });
+    }else{
+      if(checkTargetRole.has(process.env.MUTE_ROLE_ID)){
+        return interacion.reply({
+          content: "User is already muted",
+          ephemeral: true
+        });
+      }else{
+        await userOption.roles.add(muteRole);
+        interacion.reply(`${userOption.displayName} has been muted!`);
+        offenseLog.send(`User: ${userOption}\nOffense: ${reason}\nAction: Mute`);
+        userOption.send(`**${interacion.guild.name}:** You have been Muted\n**Reason:** ${reason}`)
+      }
+    }
 
+  }
+
+  if(interacion.commandName === "unmute"){
+    if(!checkKickRoles){
+      return interacion.reply({
+        content: "You do not have permission to use this command",
+        ephemeral: true
+      });
+    }else{
+      if(!checkTargetRole.has(process.env.MUTE_ROLE_ID)){
+        return interacion.reply({
+          content: "User is not muted",
+          ephemeral: true
+        });
+      }else{
+        await userOption.roles.remove(muteRole);
+        interacion.reply(`${userOption.displayName} has been Unmuted!`);
+      }
+    }
+  }
 });
 
 client.on('messageCreate', (message) =>{
@@ -161,7 +227,7 @@ client.on('messageCreate', (message) =>{
   const msgLower = message.content.toLowerCase();
   if(config.blacklist.some(word => msgLower.includes(word))){
     message.delete();
-    message.author.send(`**${message.guild.name}:** Please refrain from using Slurs or other Racist remarks`);
+    message.author.send(`**${message.guild.name}:** Please refrain from using Slurs or other Racist remarks, be nice to everyone`);
   }
 });
 
